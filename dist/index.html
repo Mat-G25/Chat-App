@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-br" class="theme-light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat App</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    .theme-light {
+      --bg-color: #ffffff;
+      --text-color: #000000;
+      --input-bg-color: #f1f1f1;
+      --input-border-color: #d1d1d1;
+      --button-bg-color: #1d4ed8;
+      --button-hover-bg-color: #1e40af;
+      --button-text-color: #ffffff;
+    }
+    .theme-dark {
+      --bg-color: #000000;
+      --bg-color-screen: #1a1a1a;
+      --text-color: #f1f1f1;
+      --input-bg-color: #2d3748;
+      --input-border-color: #4a5568;
+      --button-bg-color: #4c0080;
+      --button-hover-bg-color: #6a0dad;
+      --button-text-color: #ffffff;
+    }
+    .bg-var {
+      background-color: var(--bg-color);
+    }
+    .text-var {
+      color: var(--text-color);
+    }
+    .input-bg-var {
+      background-color: var(--input-bg-color);
+    }
+    .input-border-var {
+      border-color: var(--input-border-color);
+    }
+    .button-bg-var {
+      background-color: var(--button-bg-color);
+    }
+    .button-hover-bg-var:hover {
+      background-color: var(--button-hover-bg-color);
+    }
+    .button-text-var {
+      color: var(--button-text-color);
+    }
+  </style>
+</head>
+<body class="bg-var text-var flex flex-col items-center justify-center min-h-screen relative" style="background-color: var(--bg-color-screen);">
+  <div class="absolute top-4 right-4">
+    <button id="themeToggle" class="p-2 rounded-full focus:outline-none input-bg-var">
+      <i id="themeIcon" class="fas fa-sun w-6 h-6"></i>
+    </button>
+  </div>
+
+  <div id="loginSection" class="w-full max-w-md mx-auto md:mt-12">
+    <form id="usernameForm" class="shadow-md rounded px-8 pt-6 pb-8 mb-4 bg-var input-border-var">
+      <div class="mb-4">
+        <input type="text" id="usernameInput" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline input-bg-var input-border-var" placeholder="Digite seu nome de usuário" required>
+      </div>
+      <div class="flex items-center justify-between">
+        <button type="submit" class="font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline button-bg-var button-text-var button-hover-bg-var">
+          Entrar
+        </button>
+      </div>
+      <p id="loginMessage" class="text-red-500 text-xs italic mt-4"></p>
+    </form>
+  </div>
+
+  <div id="chatSection" class="w-full max-w-lg mx-auto md:mt-8 shadow-md rounded px-8 pt-6 pb-8 mb-4 bg-var input-border-var" style="display: none;">
+    <ul id="messages" class="list-none mb-4 text-var"></ul>
+    <form id="messageForm" class="flex">
+      <input type="text" id="messageInput" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-500 leading-tight focus:outline-none focus:shadow-outline input-bg-var input-border-var" autocomplete="off" placeholder="Digite sua mensagem">
+      <button type="submit" class="font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline ml-2 button-bg-var button-text-var button-hover-bg-var">
+        Enviar
+      </button>
+    </form>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const loginSection = document.getElementById('loginSection');
+    const chatSection = document.getElementById('chatSection');
+    const loginMessage = document.getElementById('loginMessage');
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = document.getElementById('themeIcon');
+
+    const setTheme = (theme) => {
+      document.documentElement.className = theme;
+      const iconClass = theme === 'theme-light' ? 'fas fa-sun' : 'fas fa-moon';
+      themeIcon.className = iconClass;
+    };
+
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = document.documentElement.className;
+      const newTheme = currentTheme === 'theme-light' ? 'theme-dark' : 'theme-light';
+      setTheme(newTheme);
+    });
+
+    document.getElementById('usernameForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const username = document.getElementById('usernameInput').value.trim();
+      if (username) {
+        socket.emit('setUsername', username, (response) => {
+          if (response.success) {
+            loginSection.style.display = 'none';
+            chatSection.style.display = 'block';
+            loginMessage.textContent = '';
+          } else {
+            loginMessage.textContent = response.message;
+          }
+        });
+      }
+    });
+
+    document.getElementById('messageForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const message = document.getElementById('messageInput').value.trim();
+      if (message) {
+        socket.emit('chat message', message);
+        document.getElementById('messageInput').value = '';
+      }
+    });
+
+    socket.on('chat message', (msg) => {
+      const item = document.createElement('li');
+      item.textContent = msg;
+      document.getElementById('messages').appendChild(item);
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+
+    // Receber histórico de mensagens
+    socket.on('chat history', (messages) => {
+      const messagesList = document.getElementById('messages');
+      messages.forEach((msg) => {
+        const item = document.createElement('li');
+        item.textContent = `${msg.user}: ${msg.message}`;
+        messagesList.appendChild(item);
+      });
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+  </script>
+</body>
+</html>
